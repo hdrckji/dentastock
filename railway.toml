@@ -1,0 +1,9 @@
+[build]
+builder = "RAILPACK"
+buildCommand = "npm install && npm run build"
+
+[deploy]
+preDeployCommand = ["npm run db:deploy"]
+startCommand = "npm run start"
+healthcheckPath = "/"
+healthcheckTimeout = 300
