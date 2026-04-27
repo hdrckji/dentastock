@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+enum ReorderMode {
+  SIMPLE
+  ADVANCED
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  colorHex  String?
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Supplier {
+  id            String            @id @default(cuid())
+  name          String            @unique
+  contactEmail  String?
+  phone         String?
+  leadTimeDays  Int               @default(7)
+  products      ProductSupplier[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model Product {
+  id               String            @id @default(cuid())
+  brand            String
+  description      String
+  ean              String            @unique
+  imageUrl         String?
+  minimumStock     Int               @default(0)
+  categoryId       String?
+  category         Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  suppliers        ProductSupplier[]
+  lots             StockLot[]
+  movements        StockMovement[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model ProductSupplier {
+  productId   String
+  supplierId  String
+  supplierSku String?
+  isPrimary   Boolean   @default(false)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@id([productId, supplierId])
+}
+
+model StockLot {
+  id             String          @id @default(cuid())
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchNumber    String
+  expiresAt      DateTime?
+  quantityOnHand Int             @default(0)
+  receivedAt     DateTime        @default(now())
+  movements      StockMovement[]
+  createdAt      DateTime        @default(now())
+
+  @@index([productId])
+  @@index([expiresAt])
+}
+
+model StockMovement {
+  id         String       @id @default(cuid())
+  productId  String
+  lotId      String?
+  type       MovementType
+  quantity   Int
+  reason     String?
+  occurredAt DateTime     @default(now())
+  product    Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lot        StockLot?    @relation(fields: [lotId], references: [id], onDelete: SetNull)
+
+  @@index([productId, occurredAt])
+  @@index([type])
+}
+
+model InventoryConfig {
+  id                        String      @id @default("default")
+  reorderMode               ReorderMode @default(SIMPLE)
+  advancedForecastHorizon   Int         @default(30)
+  safetyDays                Int         @default(7)
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+}
