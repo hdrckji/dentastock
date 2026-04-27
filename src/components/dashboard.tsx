@@ -38,46 +38,28 @@ type DashboardProps = {
   products: ProductSummary[];
   categories: CategorySummary[];
   suggestions: Suggestion[];
-  config: {
-    reorderMode: ReorderMode;
-    advancedForecastHorizon: number;
-    safetyDays: number;
-  };
 };
 
-export function Dashboard({ products, categories, suggestions, config }: DashboardProps) {
-  const [savingConfig, setSavingConfig] = useState(false);
-  const [creatingProduct, setCreatingProduct] = useState(false);
-  const [lookingUpEan, setLookingUpEan] = useState(false);
-  const [mode, setMode] = useState<ReorderMode>(config.reorderMode);
-  const [horizon, setHorizon] = useState<number>(config.advancedForecastHorizon);
-  const [safetyDays, setSafetyDays] = useState<number>(config.safetyDays);
-  const [ean, setEan] = useState("");
-  const [brand, setBrand] = useState("");
-  const [description, setDescription] = useState("");
-  const [minimumStock, setMinimumStock] = useState<number>(0);
-  const [imageUrl, setImageUrl] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [newCategoryName, setNewCategoryName] = useState("");
+export function Dashboard({ products, categories, suggestions }: DashboardProps) {
   const [message, setMessage] = useState<string>("");
 
   const lowStockCount = useMemo(
-    () => products.filter((product) => product.currentStock < product.minimumStock).length,
+    () => products.filter((p) => p.currentStock < p.minimumStock).length,
     [products]
   );
 
   const totalStock = useMemo(
-    () => products.reduce((sum, product) => sum + product.currentStock, 0),
+    () => products.reduce((sum, p) => sum + p.currentStock, 0),
     [products]
   );
 
   const lowStockProducts = useMemo(
-    () => products.filter((product) => product.currentStock < product.minimumStock),
+    () => products.filter((p) => p.currentStock < p.minimumStock),
     [products]
   );
 
   const maxCategoryStock = useMemo(
-    () => Math.max(...categories.map((category) => category.totalStock), 1),
+    () => Math.max(...categories.map((c) => c.totalStock), 1),
     [categories]
   );
 
@@ -100,7 +82,9 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
     () =>
       catalogFilter === "all"
         ? localProducts
-        : localProducts.filter((p) => p.categoryId === catalogFilter || p.categoryName === catalogFilter),
+        : localProducts.filter(
+            (p) => p.categoryId === catalogFilter || p.categoryName === catalogFilter
+          ),
     [localProducts, catalogFilter]
   );
 
@@ -201,135 +185,255 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
     setMessage(`Mouvement ${movementType === "IN" ? "entrée" : "sortie"} enregistré.`);
   }
 
-  async function saveConfig() {
-    setSavingConfig(true);
-    setMessage("");
-
-    const response = await fetch("/api/admin/reorder-mode", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        reorderMode: mode,
-        advancedForecastHorizon: horizon,
-        safetyDays,
-      }),
-    });
-
-    setSavingConfig(false);
-
-    if (!response.ok) {
-      setMessage("Erreur lors de la sauvegarde du mode de proposition.");
-      return;
-    }
-
-    setMessage("Configuration admin enregistree. Recharge la page pour actualiser les calculs.");
-  }
-
-  async function lookupEan() {
-    if (!/^\d{8,14}$/.test(ean.trim())) {
-      setMessage("EAN invalide. Renseigne 8 a 14 chiffres.");
-      return;
-    }
-
-    setLookingUpEan(true);
-    setMessage("");
-
-    const response = await fetch(`/api/ean-lookup?ean=${encodeURIComponent(ean.trim())}`);
-
-    setLookingUpEan(false);
-
-    if (!response.ok) {
-      setMessage("Recherche web impossible pour cet EAN.");
-      return;
-    }
-
-    const data = await response.json();
-
-    if (!data.found || !data.suggestion) {
-      setMessage("Aucune suggestion trouvee. Tu peux completer les champs manuellement.");
-      return;
-    }
-
-    if (!brand) {
-      setBrand(data.suggestion.brand || "");
-    }
-
-    if (!description) {
-      setDescription(data.suggestion.description || "");
-    }
-
-    if (!imageUrl) {
-      setImageUrl(data.suggestion.imageUrl || "");
-    }
-
-    setMessage(`Suggestion chargee depuis ${data.suggestion.source}.`);
-  }
-
-  async function createProduct() {
-    setCreatingProduct(true);
-    setMessage("");
-
-    const payload = {
-      ean: ean.trim(),
-      brand: brand.trim(),
-      description: description.trim(),
-      minimumStock,
-      imageUrl: imageUrl.trim(),
-      categoryId: categoryId || undefined,
-      categoryName: newCategoryName.trim() || undefined,
-    };
-
-    const response = await fetch("/api/products", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    setCreatingProduct(false);
-
-    if (!response.ok) {
-      setMessage("Creation produit impossible. Verifie EAN et champs obligatoires.");
-      return;
-    }
-
-    setMessage("Article cree. Recharge la page pour voir le stock mis a jour.");
-    setEan("");
-    setBrand("");
-    setDescription("");
-    setMinimumStock(0);
-    setImageUrl("");
-    setNewCategoryName("");
-  }
-
   return (
     <div className="space-y-8">
+      {/* ── Catalogue en haut ─────────────────────────────────── */}
+      <section className="panel">
+        <h2>📦 Catalogue produits</h2>
+        <p className="muted">
+          Filtre par catégorie, modifie un article ou enregistre une entrée / sortie.
+        </p>
+
+        <div className="catalogue-filter-bar mt-4">
+          <button
+            type="button"
+            className={`cat-pill${catalogFilter === "all" ? " cat-pill-active" : ""}`}
+            onClick={() => setCatalogFilter("all")}
+          >
+            Toutes
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`cat-pill${catalogFilter === c.id ? " cat-pill-active" : ""}`}
+              onClick={() => setCatalogFilter(c.id)}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+
+        {Array.from(groupedByCategory.entries()).map(([catName, prods]) => (
+          <div key={catName} className="catalogue-group mt-5">
+            <h3 className="catalogue-group-title">{catName}</h3>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Marque</th>
+                    <th>Description</th>
+                    <th>EAN</th>
+                    <th>Stock actuel</th>
+                    <th>Stock mini</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prods.map((p) => (
+                    <>
+                      <tr
+                        key={p.id}
+                        className={p.currentStock < p.minimumStock ? "row-danger" : ""}
+                      >
+                        <td>
+                          <strong>{p.brand}</strong>
+                        </td>
+                        <td>{p.description}</td>
+                        <td>
+                          <span>{p.ean}</span>
+                        </td>
+                        <td>
+                          <span
+                            className={
+                              p.currentStock < p.minimumStock ? "badge-danger" : "badge-ok"
+                            }
+                          >
+                            {p.currentStock}
+                          </span>
+                        </td>
+                        <td>{p.minimumStock}</td>
+                        <td>
+                          <div className="action-btns">
+                            <button
+                              type="button"
+                              className="btn-sm btn-edit"
+                              onClick={() => startEdit(p)}
+                            >
+                              ✏️ Modifier
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-sm btn-move"
+                              onClick={() => startMovement(p.id)}
+                            >
+                              ↕️ Entrée / Sortie
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {editingId === p.id && (
+                        <tr key={`edit-${p.id}`} className="edit-row">
+                          <td colSpan={6}>
+                            <div className="edit-panel">
+                              <p className="kicker">Modifier le produit</p>
+                              <div className="edit-grid">
+                                <label>
+                                  Marque
+                                  <input
+                                    value={editBrand}
+                                    onChange={(e) => setEditBrand(e.target.value)}
+                                  />
+                                </label>
+                                <label>
+                                  Description
+                                  <input
+                                    value={editDescription}
+                                    onChange={(e) => setEditDescription(e.target.value)}
+                                  />
+                                </label>
+                                <label>
+                                  Stock minimum
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={editMinStock}
+                                    onChange={(e) => setEditMinStock(Number(e.target.value))}
+                                  />
+                                </label>
+                                <label>
+                                  Catégorie
+                                  <select
+                                    value={editCategoryId}
+                                    onChange={(e) => setEditCategoryId(e.target.value)}
+                                  >
+                                    <option value="">— Sans catégorie —</option>
+                                    {categories.map((c) => (
+                                      <option key={c.id} value={c.id}>
+                                        {c.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </div>
+                              <div className="action-btns mt-3">
+                                <button
+                                  type="button"
+                                  onClick={() => saveEdit(p.id)}
+                                  disabled={savingEdit}
+                                >
+                                  {savingEdit ? "Sauvegarde..." : "✅ Enregistrer"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-cancel"
+                                  onClick={cancelEdit}
+                                >
+                                  Annuler
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {movementProductId === p.id && (
+                        <tr key={`mv-${p.id}`} className="edit-row">
+                          <td colSpan={6}>
+                            <div className="edit-panel">
+                              <p className="kicker">Enregistrer un mouvement de stock</p>
+                              <div className="edit-grid">
+                                <label>
+                                  Type
+                                  <select
+                                    value={movementType}
+                                    onChange={(e) =>
+                                      setMovementType(e.target.value as "IN" | "OUT")
+                                    }
+                                  >
+                                    <option value="IN">Entrée</option>
+                                    <option value="OUT">Sortie</option>
+                                  </select>
+                                </label>
+                                <label>
+                                  Quantité
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={movementQty}
+                                    onChange={(e) => setMovementQty(Number(e.target.value))}
+                                  />
+                                </label>
+                                <label>
+                                  Motif (optionnel)
+                                  <input
+                                    value={movementReason}
+                                    onChange={(e) => setMovementReason(e.target.value)}
+                                    placeholder="Ex : livraison fournisseur, utilisation patient…"
+                                  />
+                                </label>
+                              </div>
+                              <div className="action-btns mt-3">
+                                <button
+                                  type="button"
+                                  onClick={saveMovement}
+                                  disabled={savingMovement}
+                                >
+                                  {savingMovement
+                                    ? "Enregistrement..."
+                                    : "✅ Valider le mouvement"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-cancel"
+                                  onClick={cancelMovement}
+                                >
+                                  Annuler
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+
+        {filteredProducts.length === 0 && (
+          <p className="muted mt-4">Aucun produit dans cette catégorie.</p>
+        )}
+      </section>
+
+      {/* ── KPIs ────────────────────────────────────────────────── */}
       <section className="stock-hero-grid">
         <article className="stock-focus card card-highlight">
           <p className="kicker">Pilotage stock</p>
           <p className="metric metric-big">{totalStock}</p>
-          <p className="muted">unites disponibles en temps reel</p>
+          <p className="muted">unités disponibles en temps réel</p>
           <div className="stock-focus-pills">
-            <span>{products.length} articles</span>
-            <span>{categories.length} categories</span>
-            <span>{suggestions.length} commandes conseillees</span>
+            <span>{localProducts.length} articles</span>
+            <span>{categories.length} catégories</span>
+            <span>{suggestions.length} commandes conseillées</span>
           </div>
         </article>
 
         <article className="card stock-alert-card">
-          <p className="kicker">Alerte immediate</p>
+          <p className="kicker">Alerte immédiate</p>
           <p className="metric">{lowStockCount}</p>
-          <p className="muted">references sous le minimum</p>
+          <p className="muted">références sous le minimum</p>
         </article>
       </section>
 
+      {/* ── Stock critique + Radar ───────────────────────────────── */}
       <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <article className="panel">
           <h2>Mur du stock critique</h2>
-          <p className="muted">Lecture rapide des references a traiter en priorite.</p>
+          <p className="muted">Lecture rapide des références à traiter en priorité.</p>
           <div className="stock-grid mt-4">
             {lowStockProducts.map((item) => {
               const gap = item.minimumStock - item.currentStock;
@@ -341,38 +445,40 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
                   </header>
                   <p>{item.description}</p>
                   <div className="stock-inline-stats">
-                    <span>Stock: {item.currentStock}</span>
-                    <span>Mini: {item.minimumStock}</span>
-                    <span>Manque: {gap}</span>
+                    <span>Stock : {item.currentStock}</span>
+                    <span>Mini : {item.minimumStock}</span>
+                    <span>Manque : {gap}</span>
                   </div>
                 </article>
               );
             })}
-            {lowStockProducts.length === 0 ? (
+            {lowStockProducts.length === 0 && (
               <article className="stock-card-ok">
-                <strong>Tout est sous controle</strong>
+                <strong>Tout est sous contrôle</strong>
                 <p>Aucun produit n&apos;est sous le stock minimum actuellement.</p>
               </article>
-            ) : null}
+            )}
           </div>
         </article>
 
         <article className="panel">
-          <h2>Radar categories</h2>
-          <p className="muted">Repere visuel de la densite de stock par categorie.</p>
+          <h2>Radar catégories</h2>
+          <p className="muted">Repère visuel de la densité de stock par catégorie.</p>
           <div className="category-radar mt-4">
             {categories.map((category) => (
               <div key={category.id} className="category-radar-row">
                 <div className="category-radar-head">
                   <span>{category.name}</span>
                   <small>
-                    {category.totalStock} unites / {category.productCount} refs
+                    {category.totalStock} unités / {category.productCount} réfs
                   </small>
                 </div>
                 <div className="category-radar-track">
                   <div
                     className="category-radar-bar"
-                    style={{ width: `${Math.max((category.totalStock / maxCategoryStock) * 100, 5)}%` }}
+                    style={{
+                      width: `${Math.max((category.totalStock / maxCategoryStock) * 100, 5)}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -381,312 +487,27 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
         </article>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <article className="panel panel-ean">
-          <h2>Creation article guidee par EAN</h2>
-          <p className="muted">
-            Etape 1: entre le code EAN. Etape 2: recupere une suggestion web. Etape 3: valide et ajoute.
-          </p>
-
-          <div className="ean-row mt-5">
-            <input
-              value={ean}
-              onChange={(event) => setEan(event.target.value)}
-              placeholder="EAN (8 a 14 chiffres)"
-              required
-            />
-            <button type="button" onClick={lookupEan} disabled={lookingUpEan}>
-              {lookingUpEan ? "Recherche en cours..." : "Recuperer une suggestion"}
-            </button>
-          </div>
-
-          <form
-            className="mt-4 grid gap-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              createProduct();
-            }}
-          >
-            <input value={brand} onChange={(event) => setBrand(event.target.value)} placeholder="Marque" required />
-            <input
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Description produit"
-              required
-            />
-            <input
-              value={minimumStock}
-              onChange={(event) => setMinimumStock(Number(event.target.value))}
-              type="number"
-              min={0}
-              placeholder="Stock minimum"
-              required
-            />
-            <input
-              value={imageUrl}
-              onChange={(event) => setImageUrl(event.target.value)}
-              placeholder="URL image (optionnel)"
-            />
-
-            {imageUrl ? (
-              <div className="image-preview">
-                <img src={imageUrl} alt="Apercu produit" />
+      {/* ── Commandes conseillées ────────────────────────────────── */}
+      <section className="panel">
+        <h2>Commandes conseillées</h2>
+        <p className="muted">Synthèse rapide des besoins de réapprovisionnement.</p>
+        <div className="suggestion-list mt-4">
+          {suggestions.slice(0, 10).map((item) => (
+            <div key={item.productId} className="suggestion-item">
+              <div>
+                <strong>{item.brand}</strong>
+                <p>{item.description}</p>
               </div>
-            ) : null}
-
-            <label>
-              Categorie existante
-              <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-                <option value="">Selectionner une categorie</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <input
-              value={newCategoryName}
-              onChange={(event) => setNewCategoryName(event.target.value)}
-              placeholder="Ou creer une nouvelle categorie"
-            />
-
-            <button type="submit" disabled={creatingProduct}>
-              {creatingProduct ? "Creation..." : "Ajouter au stock"}
-            </button>
-          </form>
-        </article>
-
-        <article className="panel">
-          <h2>Commande conseillee</h2>
-          <p className="muted">Synthese rapide des besoins de reapprovisionnement.</p>
-          <div className="suggestion-list mt-4">
-            {suggestions.slice(0, 8).map((item) => (
-              <div key={item.productId} className="suggestion-item">
-                <div>
-                  <strong>{item.brand}</strong>
-                  <p>{item.description}</p>
-                </div>
-                <span>{item.suggestedQuantity}</span>
-              </div>
-            ))}
-            {suggestions.length === 0 ? <p className="muted">Aucun reappro conseille pour le moment.</p> : null}
-          </div>
-        </article>
-      </section>
-
-      <details className="panel panel-muted">
-        <summary>📦 Catalogue produits par catégorie</summary>
-        <div className="mt-4">
-          <div className="catalogue-filter-bar">
-            <button
-              type="button"
-              className={`cat-pill${catalogFilter === "all" ? " cat-pill-active" : ""}`}
-              onClick={() => setCatalogFilter("all")}
-            >
-              Toutes
-            </button>
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={`cat-pill${catalogFilter === c.id ? " cat-pill-active" : ""}`}
-                onClick={() => setCatalogFilter(c.id)}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
-
-          {Array.from(groupedByCategory.entries()).map(([catName, prods]) => (
-            <div key={catName} className="catalogue-group mt-5">
-              <h3 className="catalogue-group-title">{catName}</h3>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Marque</th>
-                      <th>Description</th>
-                      <th>EAN</th>
-                      <th>Stock actuel</th>
-                      <th>Stock mini</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {prods.map((p) => (
-                      <>
-                        <tr key={p.id} className={p.currentStock < p.minimumStock ? "row-danger" : ""}>
-                          <td><strong>{p.brand}</strong></td>
-                          <td>{p.description}</td>
-                          <td><span>{p.ean}</span></td>
-                          <td>
-                            <span className={p.currentStock < p.minimumStock ? "badge-danger" : "badge-ok"}>
-                              {p.currentStock}
-                            </span>
-                          </td>
-                          <td>{p.minimumStock}</td>
-                          <td>
-                            <div className="action-btns">
-                              <button type="button" className="btn-sm btn-edit" onClick={() => startEdit(p)}>
-                                ✏️ Modifier
-                              </button>
-                              <button type="button" className="btn-sm btn-move" onClick={() => startMovement(p.id)}>
-                                ↕️ Entrée / Sortie
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-
-                        {editingId === p.id && (
-                          <tr key={`edit-${p.id}`} className="edit-row">
-                            <td colSpan={6}>
-                              <div className="edit-panel">
-                                <p className="kicker">Modifier le produit</p>
-                                <div className="edit-grid">
-                                  <label>
-                                    Marque
-                                    <input value={editBrand} onChange={(e) => setEditBrand(e.target.value)} />
-                                  </label>
-                                  <label>
-                                    Description
-                                    <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
-                                  </label>
-                                  <label>
-                                    Stock minimum
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      value={editMinStock}
-                                      onChange={(e) => setEditMinStock(Number(e.target.value))}
-                                    />
-                                  </label>
-                                  <label>
-                                    Catégorie
-                                    <select
-                                      value={editCategoryId}
-                                      onChange={(e) => setEditCategoryId(e.target.value)}
-                                    >
-                                      <option value="">— Sans catégorie —</option>
-                                      {categories.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                          {c.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                </div>
-                                <div className="action-btns mt-3">
-                                  <button type="button" onClick={() => saveEdit(p.id)} disabled={savingEdit}>
-                                    {savingEdit ? "Sauvegarde..." : "✅ Enregistrer"}
-                                  </button>
-                                  <button type="button" className="btn-cancel" onClick={cancelEdit}>
-                                    Annuler
-                                  </button>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-
-                        {movementProductId === p.id && (
-                          <tr key={`mv-${p.id}`} className="edit-row">
-                            <td colSpan={6}>
-                              <div className="edit-panel">
-                                <p className="kicker">Enregistrer un mouvement de stock</p>
-                                <div className="edit-grid">
-                                  <label>
-                                    Type
-                                    <select
-                                      value={movementType}
-                                      onChange={(e) => setMovementType(e.target.value as "IN" | "OUT")}
-                                    >
-                                      <option value="IN">Entrée</option>
-                                      <option value="OUT">Sortie</option>
-                                    </select>
-                                  </label>
-                                  <label>
-                                    Quantité
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      value={movementQty}
-                                      onChange={(e) => setMovementQty(Number(e.target.value))}
-                                    />
-                                  </label>
-                                  <label>
-                                    Motif (optionnel)
-                                    <input
-                                      value={movementReason}
-                                      onChange={(e) => setMovementReason(e.target.value)}
-                                      placeholder="Ex : livraison fournisseur, utilisation patient…"
-                                    />
-                                  </label>
-                                </div>
-                                <div className="action-btns mt-3">
-                                  <button type="button" onClick={saveMovement} disabled={savingMovement}>
-                                    {savingMovement ? "Enregistrement..." : "✅ Valider le mouvement"}
-                                  </button>
-                                  <button type="button" className="btn-cancel" onClick={cancelMovement}>
-                                    Annuler
-                                  </button>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <span>{item.suggestedQuantity}</span>
             </div>
           ))}
-
-          {filteredProducts.length === 0 && (
-            <p className="muted mt-4">Aucun produit dans cette catégorie.</p>
+          {suggestions.length === 0 && (
+            <p className="muted">Aucun réappro conseillé pour le moment.</p>
           )}
         </div>
-      </details>
+      </section>
 
-      <details className="panel panel-muted">
-        <summary>Reglages admin de suggestion</summary>
-        <div className="mt-4 grid gap-3">
-          <label>
-            Mode
-            <select value={mode} onChange={(event) => setMode(event.target.value as ReorderMode)}>
-              <option value={ReorderMode.SIMPLE}>Simple (stock actuel &lt; stock mini)</option>
-              <option value={ReorderMode.ADVANCED}>Avance (conso + delai fournisseur)</option>
-            </select>
-          </label>
-          <label>
-            Horizon conso (jours)
-            <input
-              type="number"
-              min={7}
-              max={180}
-              value={horizon}
-              onChange={(event) => setHorizon(Number(event.target.value))}
-            />
-          </label>
-          <label>
-            Jours de securite
-            <input
-              type="number"
-              min={0}
-              max={60}
-              value={safetyDays}
-              onChange={(event) => setSafetyDays(Number(event.target.value))}
-            />
-          </label>
-          <button type="button" onClick={saveConfig} disabled={savingConfig}>
-            {savingConfig ? "Sauvegarde..." : "Enregistrer"}
-          </button>
-        </div>
-      </details>
-
-      {message ? <p className="notice">{message}</p> : null}
+      {message && <p className="notice">{message}</p>}
     </div>
   );
 }

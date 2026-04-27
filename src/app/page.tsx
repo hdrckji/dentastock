@@ -1,6 +1,7 @@
 import { ReorderMode } from "@/generated/prisma/enums";
 import { Dashboard } from "@/components/dashboard";
-import { computeReorderSuggestions, getInventoryConfig } from "@/lib/reorder";
+import { computeReorderSuggestions } from "@/lib/reorder";
+import { Nav } from "@/components/nav";
 import { hasConfiguredDatabaseUrl, prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -51,15 +52,6 @@ export default async function Home() {
       }>;
     }>;
   }> = [];
-  let config: {
-    reorderMode: ReorderMode;
-    advancedForecastHorizon: number;
-    safetyDays: number;
-  } = {
-    reorderMode: ReorderMode.SIMPLE,
-    advancedForecastHorizon: 30,
-    safetyDays: 7,
-  };
   let suggestions: Awaited<ReturnType<typeof computeReorderSuggestions>> = [];
 
   if (hasConfiguredDatabaseUrl) {
@@ -69,7 +61,7 @@ export default async function Home() {
         skipDuplicates: true,
       });
 
-      [products, categories, config, suggestions] = await Promise.all([
+      [products, categories, suggestions] = await Promise.all([
         prisma.product.findMany({
           include: {
             lots: true,
@@ -89,7 +81,6 @@ export default async function Home() {
             name: "asc",
           },
         }),
-        getInventoryConfig(),
         computeReorderSuggestions(),
       ]);
     } catch {
@@ -133,15 +124,12 @@ export default async function Home() {
         </p>
       </header>
 
+        <Nav />
+
       <Dashboard
         products={productSummaries}
         categories={categorySummaries}
         suggestions={suggestions}
-        config={{
-          reorderMode: config.reorderMode,
-          advancedForecastHorizon: config.advancedForecastHorizon,
-          safetyDays: config.safetyDays,
-        }}
       />
     </div>
   );

@@ -371,6 +371,42 @@ td span {
   background: #effbff;
 }
 
+/* ── Navigation ─────────────────────────────────────────────── */
+.app-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: 14px;
+  border: 1px solid #bee3f8;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0.45rem 0.6rem;
+  backdrop-filter: blur(4px);
+}
+
+.nav-link {
+  border-radius: 10px;
+  padding: 0.45rem 1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #245f7a;
+  text-decoration: none;
+  width: auto;
+  transition: background 0.15s;
+}
+
+.nav-link:hover {
+  background: #e8f7ff;
+}
+
+.nav-link-active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: #fff;
+}
+
+.nav-link-active:hover {
+  background: linear-gradient(135deg, var(--primary-dark), #1f8ccb);
+}
+
 /* ── Catalogue ─────────────────────────────────────────────── */
 .catalogue-filter-bar {
   display: flex;
