@@ -68,10 +68,26 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
   const [movementReason, setMovementReason] = useState("");
   const [savingMovement, setSavingMovement] = useState(false);
   const [quickMovementProductId, setQuickMovementProductId] = useState<string>("");
+  const [quickMovementEanQuery, setQuickMovementEanQuery] = useState("");
   const [quickMovementType, setQuickMovementType] = useState<"IN" | "OUT">("IN");
   const [quickMovementQty, setQuickMovementQty] = useState(1);
   const [quickMovementReason, setQuickMovementReason] = useState("");
   const [savingQuickMovement, setSavingQuickMovement] = useState(false);
+
+  const quickFilteredProducts = useMemo(() => {
+    const query = quickMovementEanQuery.trim();
+    if (!query) {
+      return localProducts;
+    }
+
+    const lower = query.toLowerCase();
+    return localProducts.filter(
+      (product) =>
+        product.ean.includes(query) ||
+        product.brand.toLowerCase().includes(lower) ||
+        product.description.toLowerCase().includes(lower)
+    );
+  }, [localProducts, quickMovementEanQuery]);
 
   const filteredProducts = useMemo(
     () =>
@@ -215,6 +231,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
 
     setQuickMovementQty(1);
     setQuickMovementReason("");
+    setQuickMovementEanQuery("");
     setMessage(
       `Mouvement ${quickMovementType === "IN" ? "ajout en stock" : "retrait du stock"} enregistré.`
     );
@@ -227,15 +244,32 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
         <p className="muted">Ajoute en stock ou retire du stock directement depuis le haut de page.</p>
         <div className="quick-movement-grid mt-4">
           <label>
+            Recherche par EAN (scan)
+            <input
+              value={quickMovementEanQuery}
+              onChange={(event) => {
+                const value = event.target.value.replace(/\s+/g, "");
+                setQuickMovementEanQuery(value);
+
+                const exactMatch = localProducts.find((product) => product.ean === value);
+                if (exactMatch) {
+                  setQuickMovementProductId(exactMatch.id);
+                }
+              }}
+              placeholder="Scanne ou tape le code EAN"
+              inputMode="numeric"
+            />
+          </label>
+          <label>
             Produit
             <select
               value={quickMovementProductId}
               onChange={(event) => setQuickMovementProductId(event.target.value)}
             >
               <option value="">Sélectionner un produit</option>
-              {localProducts.map((product) => (
+              {quickFilteredProducts.map((product) => (
                 <option key={product.id} value={product.id}>
-                  {product.brand} - {product.description}
+                  {product.ean} - {product.brand} - {product.description}
                 </option>
               ))}
             </select>
@@ -272,6 +306,9 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
           <button type="button" onClick={saveQuickMovement} disabled={savingQuickMovement}>
             {savingQuickMovement ? "Enregistrement..." : "Valider le mouvement"}
           </button>
+          {quickMovementEanQuery && quickFilteredProducts.length === 0 ? (
+            <p className="muted">Aucune référence trouvée pour cet EAN.</p>
+          ) : null}
         </div>
       </section>
 
