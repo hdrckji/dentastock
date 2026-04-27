@@ -80,6 +80,181 @@ body {
   padding: 1rem 1.1rem;
 }
 
+.card-highlight {
+  border-color: #84d4d4;
+  background: linear-gradient(150deg, #f8ffff 0%, #ecfffa 55%, #eef8ff 100%);
+}
+
+.stock-hero-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1.4fr 0.6fr;
+}
+
+.stock-focus-pills {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.stock-focus-pills span {
+  border: 1px solid #bee3f8;
+  background: #f3fbff;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8rem;
+  color: #225d77;
+}
+
+.metric-big {
+  font-size: clamp(2.3rem, 4.8vw, 4rem);
+  line-height: 1;
+}
+
+.stock-alert-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.stock-card-danger,
+.stock-card-ok {
+  border-radius: 14px;
+  border: 1px solid #e8d6cb;
+  background: linear-gradient(140deg, #fff9f6 0%, #fffdfc 100%);
+  padding: 0.85rem;
+}
+
+.stock-card-ok {
+  border-color: #c8e9df;
+  background: linear-gradient(140deg, #f2fff9 0%, #fbfffd 100%);
+}
+
+.stock-card-danger header {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.stock-card-danger header p {
+  margin: 0;
+  font-size: 0.77rem;
+  color: #8a4c32;
+}
+
+.stock-card-danger > p {
+  margin: 0.55rem 0;
+  font-size: 0.87rem;
+  color: #3f4f61;
+}
+
+.stock-inline-stats {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.stock-inline-stats span {
+  border-radius: 999px;
+  border: 1px solid #edd7cf;
+  background: #fff;
+  font-size: 0.75rem;
+  padding: 0.22rem 0.52rem;
+}
+
+.category-radar {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.category-radar-row {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.category-radar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.87rem;
+}
+
+.category-radar-head small {
+  color: #45617c;
+}
+
+.category-radar-track {
+  width: 100%;
+  border-radius: 999px;
+  height: 10px;
+  background: #e5eff7;
+  overflow: hidden;
+}
+
+.category-radar-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #10b5aa 0%, #2e88d3 100%);
+}
+
+.panel-ean {
+  border-color: #b9dff0;
+  background: linear-gradient(145deg, #f7fdff 0%, #ffffff 50%, #f5fcff 100%);
+}
+
+.image-preview {
+  border-radius: 12px;
+  border: 1px solid #c9e2ee;
+  background: #f8fdff;
+  overflow: hidden;
+}
+
+.image-preview img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  display: block;
+}
+
+.suggestion-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.suggestion-item {
+  border-radius: 12px;
+  border: 1px solid #d5e7f1;
+  background: #fbfeff;
+  padding: 0.65rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.suggestion-item p {
+  margin: 0.15rem 0 0;
+  color: #4d6276;
+  font-size: 0.81rem;
+}
+
+.suggestion-item span {
+  min-width: 34px;
+  text-align: center;
+  border-radius: 10px;
+  border: 1px solid #b9deea;
+  background: #eef9ff;
+  color: #165f82;
+  font-weight: 700;
+  padding: 0.35rem 0.45rem;
+}
+
 .kicker {
   font-size: 0.78rem;
   color: #17657a;
@@ -197,6 +372,10 @@ td span {
 }
 
 @media (max-width: 768px) {
+  .stock-hero-grid {
+    grid-template-columns: 1fr;
+  }
+
   .page-shell {
     width: min(1180px, 94vw);
     padding-top: 1rem;

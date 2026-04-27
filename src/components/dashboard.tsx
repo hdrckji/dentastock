@@ -74,6 +74,11 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
     [products]
   );
 
+  const maxCategoryStock = useMemo(
+    () => Math.max(...categories.map((category) => category.totalStock), 1),
+    [categories]
+  );
+
   async function saveConfig() {
     setSavingConfig(true);
     setMessage("");
@@ -180,96 +185,85 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
 
   return (
     <div className="space-y-8">
-      <section className="grid gap-4 sm:grid-cols-3">
-        <article className="card">
-          <p className="kicker">Stock total</p>
-          <p className="metric">{totalStock}</p>
-          <p className="muted">unites disponibles</p>
+      <section className="stock-hero-grid">
+        <article className="stock-focus card card-highlight">
+          <p className="kicker">Pilotage stock</p>
+          <p className="metric metric-big">{totalStock}</p>
+          <p className="muted">unites disponibles en temps reel</p>
+          <div className="stock-focus-pills">
+            <span>{products.length} articles</span>
+            <span>{categories.length} categories</span>
+            <span>{suggestions.length} commandes conseillees</span>
+          </div>
         </article>
-        <article className="card">
-          <p className="kicker">Alertes stock</p>
+
+        <article className="card stock-alert-card">
+          <p className="kicker">Alerte immediate</p>
           <p className="metric">{lowStockCount}</p>
-          <p className="muted">sous stock minimum</p>
-        </article>
-        <article className="card">
-          <p className="kicker">References</p>
-          <p className="metric">{products.length}</p>
-          <p className="muted">articles actifs</p>
+          <p className="muted">references sous le minimum</p>
         </article>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <article className="panel">
-          <h2>Stock critique a traiter</h2>
-          <p className="muted">Vue prioritaire des references sous leur stock minimum.</p>
-          <div className="table-wrap mt-4">
-            <table>
-              <thead>
-                <tr>
-                  <th>Produit</th>
-                  <th>Categorie</th>
-                  <th>Stock</th>
-                  <th>Mini</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lowStockProducts.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{item.brand}</strong>
-                      <span>{item.description}</span>
-                    </td>
-                    <td>{item.categoryName}</td>
-                    <td>{item.currentStock}</td>
-                    <td>{item.minimumStock}</td>
-                  </tr>
-                ))}
-                {lowStockProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={4}>Aucun produit en alerte actuellement.</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+          <h2>Mur du stock critique</h2>
+          <p className="muted">Lecture rapide des references a traiter en priorite.</p>
+          <div className="stock-grid mt-4">
+            {lowStockProducts.map((item) => {
+              const gap = item.minimumStock - item.currentStock;
+              return (
+                <article key={item.id} className="stock-card-danger">
+                  <header>
+                    <p>{item.categoryName}</p>
+                    <strong>{item.brand}</strong>
+                  </header>
+                  <p>{item.description}</p>
+                  <div className="stock-inline-stats">
+                    <span>Stock: {item.currentStock}</span>
+                    <span>Mini: {item.minimumStock}</span>
+                    <span>Manque: {gap}</span>
+                  </div>
+                </article>
+              );
+            })}
+            {lowStockProducts.length === 0 ? (
+              <article className="stock-card-ok">
+                <strong>Tout est sous controle</strong>
+                <p>Aucun produit n&apos;est sous le stock minimum actuellement.</p>
+              </article>
+            ) : null}
           </div>
         </article>
 
         <article className="panel">
-          <h2>Stock par categorie</h2>
-          <p className="muted">Pour retrouver plus facilement les references.</p>
-          <div className="table-wrap mt-4">
-            <table>
-              <thead>
-                <tr>
-                  <th>Categorie</th>
-                  <th>Articles</th>
-                  <th>Stock</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((category) => (
-                  <tr key={category.id}>
-                    <td>{category.name}</td>
-                    <td>{category.productCount}</td>
-                    <td>{category.totalStock}</td>
-                  </tr>
-                ))}
-                {categories.length === 0 ? (
-                  <tr>
-                    <td colSpan={3}>Aucune categorie disponible.</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+          <h2>Radar categories</h2>
+          <p className="muted">Repere visuel de la densite de stock par categorie.</p>
+          <div className="category-radar mt-4">
+            {categories.map((category) => (
+              <div key={category.id} className="category-radar-row">
+                <div className="category-radar-head">
+                  <span>{category.name}</span>
+                  <small>
+                    {category.totalStock} unites / {category.productCount} refs
+                  </small>
+                </div>
+                <div className="category-radar-track">
+                  <div
+                    className="category-radar-bar"
+                    style={{ width: `${Math.max((category.totalStock / maxCategoryStock) * 100, 5)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </article>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-        <article className="panel">
-          <h2>Creer un article (EAN d&apos;abord)</h2>
+      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <article className="panel panel-ean">
+          <h2>Creation article guidee par EAN</h2>
           <p className="muted">
-            Commence par l&apos;EAN puis lance la suggestion web pour pre-remplir marque, description et photo.
+            Etape 1: entre le code EAN. Etape 2: recupere une suggestion web. Etape 3: valide et ajoute.
           </p>
 
           <div className="ean-row mt-5">
@@ -280,7 +274,7 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
               required
             />
             <button type="button" onClick={lookupEan} disabled={lookingUpEan}>
-              {lookingUpEan ? "Recherche..." : "Proposer via EAN"}
+              {lookingUpEan ? "Recherche en cours..." : "Recuperer une suggestion"}
             </button>
           </div>
 
@@ -312,6 +306,12 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
               placeholder="URL image (optionnel)"
             />
 
+            {imageUrl ? (
+              <div className="image-preview">
+                <img src={imageUrl} alt="Apercu produit" />
+              </div>
+            ) : null}
+
             <label>
               Categorie existante
               <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
@@ -331,21 +331,31 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
             />
 
             <button type="submit" disabled={creatingProduct}>
-              {creatingProduct ? "Creation..." : "Ajouter l&apos;article"}
+              {creatingProduct ? "Creation..." : "Ajouter au stock"}
             </button>
           </form>
         </article>
 
         <article className="panel">
-          <h2>Propositions de commande</h2>
-          <p className="muted">Articles proposes a l&apos;achat selon le mode actif.</p>
-          <p className="metric mt-3">{suggestions.length}</p>
-          <p className="muted">produits a recommander</p>
+          <h2>Commande conseillee</h2>
+          <p className="muted">Synthese rapide des besoins de reapprovisionnement.</p>
+          <div className="suggestion-list mt-4">
+            {suggestions.slice(0, 8).map((item) => (
+              <div key={item.productId} className="suggestion-item">
+                <div>
+                  <strong>{item.brand}</strong>
+                  <p>{item.description}</p>
+                </div>
+                <span>{item.suggestedQuantity}</span>
+              </div>
+            ))}
+            {suggestions.length === 0 ? <p className="muted">Aucun reappro conseille pour le moment.</p> : null}
+          </div>
         </article>
       </section>
 
       <details className="panel panel-muted">
-        <summary>Administration du mode de suggestion</summary>
+        <summary>Reglages admin de suggestion</summary>
         <div className="mt-4 grid gap-3">
           <label>
             Mode
