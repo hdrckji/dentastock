@@ -391,6 +391,63 @@ td span {
   width: auto;
 }
 
+.ean-scan-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.scanner-trigger {
+  width: auto;
+  white-space: nowrap;
+  padding-inline: 0.9rem;
+}
+
+.scanner-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 28, 43, 0.6);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.scanner-card {
+  width: min(560px, 100%);
+  border-radius: 16px;
+  border: 1px solid #bfe2ef;
+  background: #ffffff;
+  padding: 1rem;
+  box-shadow: 0 20px 45px rgba(6, 44, 61, 0.22);
+}
+
+.scanner-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.scanner-close {
+  width: auto;
+  background: #f0f6fb;
+  color: #2e5168;
+  border-color: #cae1ed;
+  padding: 0.4rem 0.7rem;
+}
+
+.scanner-video {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid #c2deea;
+  background: #0f2133;
+  max-height: min(62vh, 420px);
+  object-fit: cover;
+}
+
 /* ── Navigation ─────────────────────────────────────────────── */
 .app-nav {
   display: flex;
@@ -558,5 +615,13 @@ td span {
 
   .ean-row {
     grid-template-columns: 1fr;
+  }
+
+  .ean-scan-row {
+    grid-template-columns: 1fr;
+  }
+
+  .scanner-trigger {
+    width: 100%;
   }
 }

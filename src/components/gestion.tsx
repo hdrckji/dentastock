@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ReorderMode } from "@/generated/prisma/enums";
+import { BarcodeScanner } from "@/components/barcode-scanner";
 
 type CategorySummary = {
   id: string;
@@ -124,11 +125,18 @@ export function Gestion({ categories, config }: GestionProps) {
         </p>
 
         <div className="ean-row mt-5">
-          <input
-            value={ean}
-            onChange={(e) => setEan(e.target.value)}
-            placeholder="EAN (8 à 14 chiffres)"
-          />
+          <div className="ean-scan-row">
+            <input
+              value={ean}
+              onChange={(e) => setEan(e.target.value)}
+              placeholder="EAN (8 à 14 chiffres)"
+              inputMode="numeric"
+            />
+            <BarcodeScanner
+              onDetected={(code) => setEan(code.replace(/\s+/g, ""))}
+              buttonLabel="Scanner"
+            />
+          </div>
           <button type="button" onClick={lookupEan} disabled={lookingUpEan}>
             {lookingUpEan ? "Recherche…" : "Récupérer une suggestion"}
           </button>

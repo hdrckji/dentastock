@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import { ReorderMode } from "@/generated/prisma/enums";
+import { BarcodeScanner } from "@/components/barcode-scanner";
 
 type ProductSummary = {
   id: string;
@@ -76,6 +77,19 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
   const [quickMovementReason, setQuickMovementReason] = useState("");
   const [quickMovementExpiresAt, setQuickMovementExpiresAt] = useState("");
   const [savingQuickMovement, setSavingQuickMovement] = useState(false);
+
+  const applyQuickMovementEan = useCallback(
+    (rawValue: string) => {
+      const value = rawValue.replace(/\s+/g, "");
+      setQuickMovementEanQuery(value);
+
+      const exactMatch = localProducts.find((product) => product.ean === value);
+      if (exactMatch) {
+        setQuickMovementProductId(exactMatch.id);
+      }
+    },
+    [localProducts]
+  );
 
   const quickFilteredProducts = useMemo(() => {
     const query = quickMovementEanQuery.trim();
@@ -264,20 +278,15 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
         <div className="quick-movement-grid mt-4">
           <label>
             Recherche par EAN (scan)
-            <input
-              value={quickMovementEanQuery}
-              onChange={(event) => {
-                const value = event.target.value.replace(/\s+/g, "");
-                setQuickMovementEanQuery(value);
-
-                const exactMatch = localProducts.find((product) => product.ean === value);
-                if (exactMatch) {
-                  setQuickMovementProductId(exactMatch.id);
-                }
-              }}
-              placeholder="Scanne ou tape le code EAN"
-              inputMode="numeric"
-            />
+            <div className="ean-scan-row">
+              <input
+                value={quickMovementEanQuery}
+                onChange={(event) => applyQuickMovementEan(event.target.value)}
+                placeholder="Scanne ou tape le code EAN"
+                inputMode="numeric"
+              />
+              <BarcodeScanner onDetected={applyQuickMovementEan} buttonLabel="Scanner" />
+            </div>
           </label>
           <label>
             Produit
