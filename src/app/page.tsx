@@ -41,6 +41,7 @@ export default async function Home() {
     } | null;
     lots: Array<{
       quantityOnHand: number;
+      expiresAt: Date | null;
     }>;
   }> = [];
   let categories: Array<{
@@ -90,17 +91,25 @@ export default async function Home() {
     }
   }
 
-  const productSummaries = products.map((product) => ({
-    id: product.id,
-    brand: product.brand,
-    description: product.description,
-    ean: product.ean,
-    minimumStock: product.minimumStock,
-    imageUrl: product.imageUrl,
-    categoryId: product.categoryId,
-    categoryName: product.category?.name || "Sans categorie",
-    currentStock: product.lots.reduce((sum, lot) => sum + lot.quantityOnHand, 0),
-  }));
+  const productSummaries = products.map((product) => {
+    const sortedExpiryDates = product.lots
+      .map((lot) => lot.expiresAt)
+      .filter((value): value is Date => value !== null)
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    return {
+      id: product.id,
+      brand: product.brand,
+      description: product.description,
+      ean: product.ean,
+      minimumStock: product.minimumStock,
+      imageUrl: product.imageUrl,
+      categoryId: product.categoryId,
+      categoryName: product.category?.name || "Sans categorie",
+      nextExpiryAt: sortedExpiryDates[0]?.toISOString() ?? null,
+      currentStock: product.lots.reduce((sum, lot) => sum + lot.quantityOnHand, 0),
+    };
+  });
 
   const categorySummaries = categories.map((category) => ({
     id: category.id,

@@ -13,6 +13,7 @@ type ProductSummary = {
   categoryName: string;
   categoryId: string | null;
   imageUrl?: string | null;
+  nextExpiryAt?: string | null;
 };
 
 type CategorySummary = {
@@ -61,6 +62,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
   const [editDescription, setEditDescription] = useState("");
   const [editMinStock, setEditMinStock] = useState(0);
   const [editCategoryId, setEditCategoryId] = useState<string>("");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [movementProductId, setMovementProductId] = useState<string | null>(null);
   const [movementType, setMovementType] = useState<"IN" | "OUT">("IN");
@@ -72,6 +74,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
   const [quickMovementType, setQuickMovementType] = useState<"IN" | "OUT">("IN");
   const [quickMovementQty, setQuickMovementQty] = useState(1);
   const [quickMovementReason, setQuickMovementReason] = useState("");
+  const [quickMovementExpiresAt, setQuickMovementExpiresAt] = useState("");
   const [savingQuickMovement, setSavingQuickMovement] = useState(false);
 
   const quickFilteredProducts = useMemo(() => {
@@ -115,6 +118,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
     setEditDescription(p.description);
     setEditMinStock(p.minimumStock);
     setEditCategoryId(p.categoryId ?? "");
+    setEditExpiresAt(p.nextExpiryAt ? p.nextExpiryAt.slice(0, 10) : "");
     setMovementProductId(null);
   }, []);
 
@@ -130,6 +134,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
         description: editDescription,
         minimumStock: editMinStock,
         categoryId: editCategoryId || null,
+        expiresAt: editExpiresAt || null,
       }),
     });
     setSavingEdit(false);
@@ -148,6 +153,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
               categoryId: editCategoryId || null,
               categoryName:
                 categories.find((c) => c.id === editCategoryId)?.name ?? p.categoryName,
+              nextExpiryAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
             }
           : p
       )
@@ -211,6 +217,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
         type: quickMovementType,
         quantity: quickMovementQty,
         reason: quickMovementReason || undefined,
+        expiresAt: quickMovementExpiresAt || undefined,
       }),
     });
     setSavingQuickMovement(false);
@@ -232,6 +239,18 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
     setQuickMovementQty(1);
     setQuickMovementReason("");
     setQuickMovementEanQuery("");
+    setQuickMovementExpiresAt("");
+
+    if (quickMovementType === "IN" && quickMovementExpiresAt) {
+      setLocalProducts((prev) =>
+        prev.map((p) =>
+          p.id === quickMovementProductId
+            ? { ...p, nextExpiryAt: new Date(quickMovementExpiresAt).toISOString() }
+            : p
+        )
+      );
+    }
+
     setMessage(
       `Mouvement ${quickMovementType === "IN" ? "ajout en stock" : "retrait du stock"} enregistré.`
     );
@@ -294,6 +313,14 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
             />
           </label>
           <label>
+            Date de péremption (optionnel)
+            <input
+              type="date"
+              value={quickMovementExpiresAt}
+              onChange={(event) => setQuickMovementExpiresAt(event.target.value)}
+            />
+          </label>
+          <label>
             Motif (optionnel)
             <input
               value={quickMovementReason}
@@ -351,6 +378,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
                     <th>EAN</th>
                     <th>Stock actuel</th>
                     <th>Stock mini</th>
+                    <th>Péremption</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -378,6 +406,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
                           </span>
                         </td>
                         <td>{p.minimumStock}</td>
+                        <td>{p.nextExpiryAt ? p.nextExpiryAt.slice(0, 10) : "-"}</td>
                         <td>
                           <div className="action-btns">
                             <button
@@ -400,7 +429,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
 
                       {editingId === p.id && (
                         <tr key={`edit-${p.id}`} className="edit-row">
-                          <td colSpan={6}>
+                          <td colSpan={7}>
                             <div className="edit-panel">
                               <p className="kicker">Modifier le produit</p>
                               <div className="edit-grid">
@@ -441,6 +470,14 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
                                     ))}
                                   </select>
                                 </label>
+                                <label>
+                                  Date de péremption
+                                  <input
+                                    type="date"
+                                    value={editExpiresAt}
+                                    onChange={(e) => setEditExpiresAt(e.target.value)}
+                                  />
+                                </label>
                               </div>
                               <div className="action-btns mt-3">
                                 <button
@@ -465,7 +502,7 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
 
                       {movementProductId === p.id && (
                         <tr key={`mv-${p.id}`} className="edit-row">
-                          <td colSpan={6}>
+                          <td colSpan={7}>
                             <div className="edit-panel">
                               <p className="kicker">Enregistrer un mouvement de stock</p>
                               <div className="edit-grid">

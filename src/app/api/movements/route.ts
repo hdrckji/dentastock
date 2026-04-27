@@ -8,6 +8,7 @@ const movementSchema = z.object({
   type: z.enum(["IN", "OUT", "ADJUSTMENT"]),
   quantity: z.number().int().positive(),
   reason: z.string().optional(),
+  expiresAt: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
   }
 
-  const { productId, type, quantity, reason } = parsed.data;
+  const { productId, type, quantity, reason, expiresAt } = parsed.data;
 
   // Ensure the product exists
   const product = await prisma.product.findUnique({ where: { id: productId } });
@@ -65,7 +66,12 @@ export async function POST(request: NextRequest) {
     }),
     prisma.stockLot.update({
       where: { id: lot.id },
-      data: { quantityOnHand: { increment: delta } },
+      data: {
+        quantityOnHand: { increment: delta },
+        ...(type === "IN" && expiresAt
+          ? { expiresAt: new Date(expiresAt) }
+          : {}),
+      },
     }),
   ]);
 
