@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { ReorderMode } from "@/generated/prisma/enums";
 
 type ProductSummary = {
@@ -11,6 +11,8 @@ type ProductSummary = {
   minimumStock: number;
   currentStock: number;
   categoryName: string;
+  categoryId: string | null;
+  imageUrl?: string | null;
 };
 
 type CategorySummary = {
@@ -78,6 +80,126 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
     () => Math.max(...categories.map((category) => category.totalStock), 1),
     [categories]
   );
+
+  // ── Catalogue state ──────────────────────────────────────────────
+  const [catalogFilter, setCatalogFilter] = useState<string>("all");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBrand, setEditBrand] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editMinStock, setEditMinStock] = useState(0);
+  const [editCategoryId, setEditCategoryId] = useState<string>("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [movementProductId, setMovementProductId] = useState<string | null>(null);
+  const [movementType, setMovementType] = useState<"IN" | "OUT">("IN");
+  const [movementQty, setMovementQty] = useState(1);
+  const [movementReason, setMovementReason] = useState("");
+  const [savingMovement, setSavingMovement] = useState(false);
+  const [localProducts, setLocalProducts] = useState<ProductSummary[]>(products);
+
+  const filteredProducts = useMemo(
+    () =>
+      catalogFilter === "all"
+        ? localProducts
+        : localProducts.filter((p) => p.categoryId === catalogFilter || p.categoryName === catalogFilter),
+    [localProducts, catalogFilter]
+  );
+
+  const groupedByCategory = useMemo(() => {
+    const groups = new Map<string, ProductSummary[]>();
+    for (const p of filteredProducts) {
+      const key = p.categoryName || "Sans catégorie";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(p);
+    }
+    return groups;
+  }, [filteredProducts]);
+
+  const startEdit = useCallback((p: ProductSummary) => {
+    setEditingId(p.id);
+    setEditBrand(p.brand);
+    setEditDescription(p.description);
+    setEditMinStock(p.minimumStock);
+    setEditCategoryId(p.categoryId ?? "");
+    setMovementProductId(null);
+  }, []);
+
+  const cancelEdit = useCallback(() => setEditingId(null), []);
+
+  async function saveEdit(id: string) {
+    setSavingEdit(true);
+    const res = await fetch(`/api/products/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brand: editBrand,
+        description: editDescription,
+        minimumStock: editMinStock,
+        categoryId: editCategoryId || null,
+      }),
+    });
+    setSavingEdit(false);
+    if (!res.ok) {
+      setMessage("Erreur lors de la modification du produit.");
+      return;
+    }
+    setLocalProducts((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              brand: editBrand,
+              description: editDescription,
+              minimumStock: editMinStock,
+              categoryId: editCategoryId || null,
+              categoryName:
+                categories.find((c) => c.id === editCategoryId)?.name ?? p.categoryName,
+            }
+          : p
+      )
+    );
+    setEditingId(null);
+    setMessage("Produit mis à jour.");
+  }
+
+  const startMovement = useCallback((id: string) => {
+    setMovementProductId(id);
+    setMovementType("IN");
+    setMovementQty(1);
+    setMovementReason("");
+    setEditingId(null);
+  }, []);
+
+  const cancelMovement = useCallback(() => setMovementProductId(null), []);
+
+  async function saveMovement() {
+    if (!movementProductId) return;
+    setSavingMovement(true);
+    const res = await fetch("/api/movements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId: movementProductId,
+        type: movementType,
+        quantity: movementQty,
+        reason: movementReason || undefined,
+      }),
+    });
+    setSavingMovement(false);
+    if (!res.ok) {
+      setMessage("Erreur lors de l'enregistrement du mouvement.");
+      return;
+    }
+    const delta = movementType === "IN" ? movementQty : -movementQty;
+    setLocalProducts((prev) =>
+      prev.map((p) =>
+        p.id === movementProductId
+          ? { ...p, currentStock: Math.max(0, p.currentStock + delta) }
+          : p
+      )
+    );
+    setMovementProductId(null);
+    setMessage(`Mouvement ${movementType === "IN" ? "entrée" : "sortie"} enregistré.`);
+  }
 
   async function saveConfig() {
     setSavingConfig(true);
@@ -353,6 +475,180 @@ export function Dashboard({ products, categories, suggestions, config }: Dashboa
           </div>
         </article>
       </section>
+
+      <details className="panel panel-muted">
+        <summary>📦 Catalogue produits par catégorie</summary>
+        <div className="mt-4">
+          <div className="catalogue-filter-bar">
+            <button
+              type="button"
+              className={`cat-pill${catalogFilter === "all" ? " cat-pill-active" : ""}`}
+              onClick={() => setCatalogFilter("all")}
+            >
+              Toutes
+            </button>
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`cat-pill${catalogFilter === c.id ? " cat-pill-active" : ""}`}
+                onClick={() => setCatalogFilter(c.id)}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+
+          {Array.from(groupedByCategory.entries()).map(([catName, prods]) => (
+            <div key={catName} className="catalogue-group mt-5">
+              <h3 className="catalogue-group-title">{catName}</h3>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Marque</th>
+                      <th>Description</th>
+                      <th>EAN</th>
+                      <th>Stock actuel</th>
+                      <th>Stock mini</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prods.map((p) => (
+                      <>
+                        <tr key={p.id} className={p.currentStock < p.minimumStock ? "row-danger" : ""}>
+                          <td><strong>{p.brand}</strong></td>
+                          <td>{p.description}</td>
+                          <td><span>{p.ean}</span></td>
+                          <td>
+                            <span className={p.currentStock < p.minimumStock ? "badge-danger" : "badge-ok"}>
+                              {p.currentStock}
+                            </span>
+                          </td>
+                          <td>{p.minimumStock}</td>
+                          <td>
+                            <div className="action-btns">
+                              <button type="button" className="btn-sm btn-edit" onClick={() => startEdit(p)}>
+                                ✏️ Modifier
+                              </button>
+                              <button type="button" className="btn-sm btn-move" onClick={() => startMovement(p.id)}>
+                                ↕️ Entrée / Sortie
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {editingId === p.id && (
+                          <tr key={`edit-${p.id}`} className="edit-row">
+                            <td colSpan={6}>
+                              <div className="edit-panel">
+                                <p className="kicker">Modifier le produit</p>
+                                <div className="edit-grid">
+                                  <label>
+                                    Marque
+                                    <input value={editBrand} onChange={(e) => setEditBrand(e.target.value)} />
+                                  </label>
+                                  <label>
+                                    Description
+                                    <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+                                  </label>
+                                  <label>
+                                    Stock minimum
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={editMinStock}
+                                      onChange={(e) => setEditMinStock(Number(e.target.value))}
+                                    />
+                                  </label>
+                                  <label>
+                                    Catégorie
+                                    <select
+                                      value={editCategoryId}
+                                      onChange={(e) => setEditCategoryId(e.target.value)}
+                                    >
+                                      <option value="">— Sans catégorie —</option>
+                                      {categories.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                          {c.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                </div>
+                                <div className="action-btns mt-3">
+                                  <button type="button" onClick={() => saveEdit(p.id)} disabled={savingEdit}>
+                                    {savingEdit ? "Sauvegarde..." : "✅ Enregistrer"}
+                                  </button>
+                                  <button type="button" className="btn-cancel" onClick={cancelEdit}>
+                                    Annuler
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+
+                        {movementProductId === p.id && (
+                          <tr key={`mv-${p.id}`} className="edit-row">
+                            <td colSpan={6}>
+                              <div className="edit-panel">
+                                <p className="kicker">Enregistrer un mouvement de stock</p>
+                                <div className="edit-grid">
+                                  <label>
+                                    Type
+                                    <select
+                                      value={movementType}
+                                      onChange={(e) => setMovementType(e.target.value as "IN" | "OUT")}
+                                    >
+                                      <option value="IN">Entrée</option>
+                                      <option value="OUT">Sortie</option>
+                                    </select>
+                                  </label>
+                                  <label>
+                                    Quantité
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={movementQty}
+                                      onChange={(e) => setMovementQty(Number(e.target.value))}
+                                    />
+                                  </label>
+                                  <label>
+                                    Motif (optionnel)
+                                    <input
+                                      value={movementReason}
+                                      onChange={(e) => setMovementReason(e.target.value)}
+                                      placeholder="Ex : livraison fournisseur, utilisation patient…"
+                                    />
+                                  </label>
+                                </div>
+                                <div className="action-btns mt-3">
+                                  <button type="button" onClick={saveMovement} disabled={savingMovement}>
+                                    {savingMovement ? "Enregistrement..." : "✅ Valider le mouvement"}
+                                  </button>
+                                  <button type="button" className="btn-cancel" onClick={cancelMovement}>
+                                    Annuler
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+
+          {filteredProducts.length === 0 && (
+            <p className="muted mt-4">Aucun produit dans cette catégorie.</p>
+          )}
+        </div>
+      </details>
 
       <details className="panel panel-muted">
         <summary>Reglages admin de suggestion</summary>

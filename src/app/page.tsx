@@ -33,6 +33,8 @@ export default async function Home() {
     description: string;
     ean: string;
     minimumStock: number;
+    imageUrl: string | null;
+    categoryId: string | null;
     category: {
       name: string;
     } | null;
@@ -103,6 +105,8 @@ export default async function Home() {
     description: product.description,
     ean: product.ean,
     minimumStock: product.minimumStock,
+    imageUrl: product.imageUrl,
+    categoryId: product.categoryId,
     categoryName: product.category?.name || "Sans categorie",
     currentStock: product.lots.reduce((sum, lot) => sum + lot.quantityOnHand, 0),
   }));
