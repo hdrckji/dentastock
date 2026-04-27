@@ -7,8 +7,12 @@ type EanSuggestion = {
   source: string;
 };
 
-async function lookupOpenFoodFacts(ean: string): Promise<EanSuggestion | null> {
-  const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${ean}.json`, {
+async function lookupOpenFactsProduct(
+  ean: string,
+  baseUrl: string,
+  source: string
+): Promise<EanSuggestion | null> {
+  const response = await fetch(`${baseUrl}/api/v2/product/${ean}.json`, {
     cache: "no-store",
   });
 
@@ -34,8 +38,26 @@ async function lookupOpenFoodFacts(ean: string): Promise<EanSuggestion | null> {
     brand: product.brands || "Marque inconnue",
     description,
     imageUrl: product.image_front_url || product.image_url || "",
-    source: "OpenFoodFacts",
+    source,
   };
+}
+
+async function lookupOpenFacts(ean: string): Promise<EanSuggestion | null> {
+  const providers = [
+    { baseUrl: "https://world.openfoodfacts.org", source: "OpenFoodFacts" },
+    { baseUrl: "https://world.openbeautyfacts.org", source: "OpenBeautyFacts" },
+    { baseUrl: "https://world.openproductsfacts.org", source: "OpenProductsFacts" },
+    { baseUrl: "https://world.openpetfoodfacts.org", source: "OpenPetFoodFacts" },
+  ];
+
+  for (const provider of providers) {
+    const suggestion = await lookupOpenFactsProduct(ean, provider.baseUrl, provider.source);
+    if (suggestion) {
+      return suggestion;
+    }
+  }
+
+  return null;
 }
 
 async function lookupUpcItemDb(ean: string): Promise<EanSuggestion | null> {
@@ -71,10 +93,10 @@ export async function GET(req: Request) {
   }
 
   try {
-    const openFood = await lookupOpenFoodFacts(ean);
+    const openFacts = await lookupOpenFacts(ean);
 
-    if (openFood) {
-      return NextResponse.json({ found: true, suggestion: openFood });
+    if (openFacts) {
+      return NextResponse.json({ found: true, suggestion: openFacts });
     }
 
     const upc = await lookupUpcItemDb(ean);

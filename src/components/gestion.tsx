@@ -52,7 +52,11 @@ export function Gestion({ categories, config }: GestionProps) {
     }
     const data = await response.json();
     if (!data.found || !data.suggestion) {
-      setMessage("Aucune suggestion trouvée. Tu peux compléter les champs manuellement.");
+      if (!brand) setBrand("Marque inconnue");
+      if (!description) setDescription(`Article EAN ${ean.trim()}`);
+      setMessage(
+        "Aucune suggestion web trouvée pour cet EAN. J'ai prérempli une base pour aller plus vite."
+      );
       return;
     }
     if (!brand) setBrand(data.suggestion.brand || "");

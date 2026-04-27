@@ -42,20 +42,11 @@ type DashboardProps = {
 
 export function Dashboard({ products, categories, suggestions }: DashboardProps) {
   const [message, setMessage] = useState<string>("");
-
-  const lowStockCount = useMemo(
-    () => products.filter((p) => p.currentStock < p.minimumStock).length,
-    [products]
-  );
-
-  const totalStock = useMemo(
-    () => products.reduce((sum, p) => sum + p.currentStock, 0),
-    [products]
-  );
+  const [localProducts, setLocalProducts] = useState<ProductSummary[]>(products);
 
   const lowStockProducts = useMemo(
-    () => products.filter((p) => p.currentStock < p.minimumStock),
-    [products]
+    () => localProducts.filter((p) => p.currentStock < p.minimumStock),
+    [localProducts]
   );
 
   const maxCategoryStock = useMemo(
@@ -76,7 +67,11 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
   const [movementQty, setMovementQty] = useState(1);
   const [movementReason, setMovementReason] = useState("");
   const [savingMovement, setSavingMovement] = useState(false);
-  const [localProducts, setLocalProducts] = useState<ProductSummary[]>(products);
+  const [quickMovementProductId, setQuickMovementProductId] = useState<string>("");
+  const [quickMovementType, setQuickMovementType] = useState<"IN" | "OUT">("IN");
+  const [quickMovementQty, setQuickMovementQty] = useState(1);
+  const [quickMovementReason, setQuickMovementReason] = useState("");
+  const [savingQuickMovement, setSavingQuickMovement] = useState(false);
 
   const filteredProducts = useMemo(
     () =>
@@ -185,8 +180,101 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
     setMessage(`Mouvement ${movementType === "IN" ? "entrée" : "sortie"} enregistré.`);
   }
 
+  async function saveQuickMovement() {
+    if (!quickMovementProductId) {
+      setMessage("Choisis un produit pour enregistrer le mouvement.");
+      return;
+    }
+
+    setSavingQuickMovement(true);
+    const res = await fetch("/api/movements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId: quickMovementProductId,
+        type: quickMovementType,
+        quantity: quickMovementQty,
+        reason: quickMovementReason || undefined,
+      }),
+    });
+    setSavingQuickMovement(false);
+
+    if (!res.ok) {
+      setMessage("Erreur lors de l'enregistrement du mouvement rapide.");
+      return;
+    }
+
+    const delta = quickMovementType === "IN" ? quickMovementQty : -quickMovementQty;
+    setLocalProducts((prev) =>
+      prev.map((p) =>
+        p.id === quickMovementProductId
+          ? { ...p, currentStock: Math.max(0, p.currentStock + delta) }
+          : p
+      )
+    );
+
+    setQuickMovementQty(1);
+    setQuickMovementReason("");
+    setMessage(
+      `Mouvement ${quickMovementType === "IN" ? "ajout en stock" : "retrait du stock"} enregistré.`
+    );
+  }
+
   return (
     <div className="space-y-8">
+      <section className="panel quick-movement-panel">
+        <h2>Stock rapide</h2>
+        <p className="muted">Ajoute en stock ou retire du stock directement depuis le haut de page.</p>
+        <div className="quick-movement-grid mt-4">
+          <label>
+            Produit
+            <select
+              value={quickMovementProductId}
+              onChange={(event) => setQuickMovementProductId(event.target.value)}
+            >
+              <option value="">Sélectionner un produit</option>
+              {localProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.brand} - {product.description}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Type de mouvement
+            <select
+              value={quickMovementType}
+              onChange={(event) => setQuickMovementType(event.target.value as "IN" | "OUT")}
+            >
+              <option value="IN">Ajouter en stock</option>
+              <option value="OUT">Retirer du stock</option>
+            </select>
+          </label>
+          <label>
+            Quantité
+            <input
+              type="number"
+              min={1}
+              value={quickMovementQty}
+              onChange={(event) => setQuickMovementQty(Number(event.target.value))}
+            />
+          </label>
+          <label>
+            Motif (optionnel)
+            <input
+              value={quickMovementReason}
+              onChange={(event) => setQuickMovementReason(event.target.value)}
+              placeholder="Ex: livraison, usage cabinet"
+            />
+          </label>
+        </div>
+        <div className="quick-movement-actions mt-3">
+          <button type="button" onClick={saveQuickMovement} disabled={savingQuickMovement}>
+            {savingQuickMovement ? "Enregistrement..." : "Valider le mouvement"}
+          </button>
+        </div>
+      </section>
+
       {/* ── Catalogue en haut ─────────────────────────────────── */}
       <section className="panel">
         <h2>📦 Catalogue produits</h2>
@@ -407,26 +495,6 @@ export function Dashboard({ products, categories, suggestions }: DashboardProps)
         {filteredProducts.length === 0 && (
           <p className="muted mt-4">Aucun produit dans cette catégorie.</p>
         )}
-      </section>
-
-      {/* ── KPIs ────────────────────────────────────────────────── */}
-      <section className="stock-hero-grid">
-        <article className="stock-focus card card-highlight">
-          <p className="kicker">Pilotage stock</p>
-          <p className="metric metric-big">{totalStock}</p>
-          <p className="muted">unités disponibles en temps réel</p>
-          <div className="stock-focus-pills">
-            <span>{localProducts.length} articles</span>
-            <span>{categories.length} catégories</span>
-            <span>{suggestions.length} commandes conseillées</span>
-          </div>
-        </article>
-
-        <article className="card stock-alert-card">
-          <p className="kicker">Alerte immédiate</p>
-          <p className="metric">{lowStockCount}</p>
-          <p className="muted">références sous le minimum</p>
-        </article>
       </section>
 
       {/* ── Stock critique + Radar ───────────────────────────────── */}

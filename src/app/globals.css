@@ -371,6 +371,26 @@ td span {
   background: #effbff;
 }
 
+.quick-movement-panel {
+  border-color: #9fded8;
+  background: linear-gradient(145deg, #f2fffb 0%, #ffffff 60%, #f3fbff 100%);
+}
+
+.quick-movement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.quick-movement-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.quick-movement-actions button {
+  width: auto;
+}
+
 /* ── Navigation ─────────────────────────────────────────────── */
 .app-nav {
   display: flex;
