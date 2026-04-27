@@ -6,14 +6,24 @@ import { hasConfiguredDatabaseUrl, prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 const defaultDentalCategories = [
+  "Gants",
+  "Lingettes",
   "Anesthesie",
-  "Sterilisation",
-  "Endodontie",
-  "Implantologie",
-  "Hygiene et prevention",
+  "Protheses",
   "Consommables",
-  "Radiologie",
-  "Urgences",
+  "Endo",
+  "Obturation",
+  "Extraction",
+  "Contention",
+  "Sterilisation",
+  "Implant & couronne",
+  "Soins enfant",
+  "Instruments",
+  "Pansement",
+  "Fonds de cavite",
+  "Autres",
+  "Echantillons",
+  "Materiel de bureau",
 ];
 
 export default async function Home() {
@@ -52,14 +62,10 @@ export default async function Home() {
 
   if (hasConfiguredDatabaseUrl) {
     try {
-      const existingCategoryCount = await prisma.category.count();
-
-      if (existingCategoryCount === 0) {
-        await prisma.category.createMany({
-          data: defaultDentalCategories.map((name) => ({ name })),
-          skipDuplicates: true,
-        });
-      }
+      await prisma.category.createMany({
+        data: defaultDentalCategories.map((name) => ({ name })),
+        skipDuplicates: true,
+      });
 
       [products, categories, config, suggestions] = await Promise.all([
         prisma.product.findMany({
