@@ -5,6 +5,17 @@ import { hasConfiguredDatabaseUrl, prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+const defaultDentalCategories = [
+  "Anesthesie",
+  "Sterilisation",
+  "Endodontie",
+  "Implantologie",
+  "Hygiene et prevention",
+  "Consommables",
+  "Radiologie",
+  "Urgences",
+];
+
 export default async function Home() {
   let products: Array<{
     id: string;
@@ -12,8 +23,20 @@ export default async function Home() {
     description: string;
     ean: string;
     minimumStock: number;
+    category: {
+      name: string;
+    } | null;
     lots: Array<{
       quantityOnHand: number;
+    }>;
+  }> = [];
+  let categories: Array<{
+    id: string;
+    name: string;
+    products: Array<{
+      lots: Array<{
+        quantityOnHand: number;
+      }>;
     }>;
   }> = [];
   let config: {
@@ -29,16 +52,41 @@ export default async function Home() {
 
   if (hasConfiguredDatabaseUrl) {
     try {
-      [products, config, suggestions] = await Promise.all([
+      const existingCategoryCount = await prisma.category.count();
+
+      if (existingCategoryCount === 0) {
+        await prisma.category.createMany({
+          data: defaultDentalCategories.map((name) => ({ name })),
+          skipDuplicates: true,
+        });
+      }
+
+      [products, categories, config, suggestions] = await Promise.all([
         prisma.product.findMany({
-          include: { lots: true },
+          include: {
+            lots: true,
+            category: true,
+          },
           orderBy: { createdAt: "desc" },
+        }),
+        prisma.category.findMany({
+          include: {
+            products: {
+              include: {
+                lots: true,
+              },
+            },
+          },
+          orderBy: {
+            name: "asc",
+          },
         }),
         getInventoryConfig(),
         computeReorderSuggestions(),
       ]);
     } catch {
       products = [];
+      categories = [];
       suggestions = [];
     }
   }
@@ -49,7 +97,19 @@ export default async function Home() {
     description: product.description,
     ean: product.ean,
     minimumStock: product.minimumStock,
+    categoryName: product.category?.name || "Sans categorie",
     currentStock: product.lots.reduce((sum, lot) => sum + lot.quantityOnHand, 0),
+  }));
+
+  const categorySummaries = categories.map((category) => ({
+    id: category.id,
+    name: category.name,
+    productCount: category.products.length,
+    totalStock: category.products.reduce(
+      (categorySum, product) =>
+        categorySum + product.lots.reduce((productSum, lot) => productSum + lot.quantityOnHand, 0),
+      0
+    ),
   }));
 
   return (
@@ -65,6 +125,7 @@ export default async function Home() {
 
       <Dashboard
         products={productSummaries}
+        categories={categorySummaries}
         suggestions={suggestions}
         config={{
           reorderMode: config.reorderMode,

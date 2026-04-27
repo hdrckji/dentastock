@@ -102,9 +102,24 @@ body {
   padding: 1rem;
 }
 
+.panel-muted {
+  opacity: 0.92;
+}
+
+.panel summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
 .panel h2 {
   font-size: 1.2rem;
   letter-spacing: -0.02em;
+}
+
+.ean-row {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: 2fr 1fr;
 }
 
 input,
@@ -189,5 +204,9 @@ td span {
 
   .hero {
     padding: 1rem;
+  }
+
+  .ean-row {
+    grid-template-columns: 1fr;
   }
 }

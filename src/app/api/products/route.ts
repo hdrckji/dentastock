@@ -9,6 +9,7 @@ const createProductSchema = z.object({
   minimumStock: z.number().int().min(0).default(0),
   imageUrl: z.string().url().optional().or(z.literal("")),
   categoryId: z.string().cuid().optional(),
+  categoryName: z.string().trim().min(2).optional(),
   supplierIds: z.array(z.string().cuid()).default([]),
 });
 
@@ -56,6 +57,17 @@ export async function POST(req: Request) {
 
   const data = parsed.data;
 
+  const categoryRelation = data.categoryId
+    ? { connect: { id: data.categoryId } }
+    : data.categoryName
+      ? {
+          connectOrCreate: {
+            where: { name: data.categoryName },
+            create: { name: data.categoryName },
+          },
+        }
+      : undefined;
+
   const product = await prisma.product.create({
     data: {
       brand: data.brand,
@@ -63,7 +75,7 @@ export async function POST(req: Request) {
       ean: data.ean,
       minimumStock: data.minimumStock,
       imageUrl: data.imageUrl || null,
-      categoryId: data.categoryId,
+      category: categoryRelation,
       suppliers: {
         create: data.supplierIds.map((supplierId, index) => ({
           supplierId,
