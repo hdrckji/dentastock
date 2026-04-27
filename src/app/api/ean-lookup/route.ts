@@ -7,6 +7,57 @@ type EanSuggestion = {
   source: string;
 };
 
+function normalizeText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+async function lookupSerpApi(ean: string): Promise<EanSuggestion | null> {
+  const apiKey = process.env.SERPAPI_KEY;
+
+  if (!apiKey) {
+    return null;
+  }
+
+  const endpoints = [
+    `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(ean)}&hl=fr&gl=fr&api_key=${encodeURIComponent(apiKey)}`,
+    `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(ean)}&hl=fr&gl=fr&api_key=${encodeURIComponent(apiKey)}`,
+  ];
+
+  for (const url of endpoints) {
+    const response = await fetch(url, { cache: "no-store" });
+
+    if (!response.ok) {
+      continue;
+    }
+
+    const data = await response.json();
+
+    const shoppingItem = data?.shopping_results?.[0];
+    if (shoppingItem?.title) {
+      return {
+        brand: normalizeText(shoppingItem.source) || "Marque inconnue",
+        description: normalizeText(shoppingItem.title),
+        imageUrl: normalizeText(shoppingItem.thumbnail),
+        source: "Google Shopping (SerpAPI)",
+      };
+    }
+
+    const webItem = data?.organic_results?.[0];
+    const title = normalizeText(webItem?.title);
+    const snippet = normalizeText(webItem?.snippet);
+    if (title) {
+      return {
+        brand: "Marque inconnue",
+        description: snippet ? `${title} - ${snippet}` : title,
+        imageUrl: "",
+        source: "Google Web (SerpAPI)",
+      };
+    }
+  }
+
+  return null;
+}
+
 async function lookupOpenFactsProduct(
   ean: string,
   baseUrl: string,
@@ -103,6 +154,12 @@ export async function GET(req: Request) {
 
     if (upc) {
       return NextResponse.json({ found: true, suggestion: upc });
+    }
+
+    const serp = await lookupSerpApi(ean);
+
+    if (serp) {
+      return NextResponse.json({ found: true, suggestion: serp });
     }
 
     return NextResponse.json({ found: false, suggestion: null });
