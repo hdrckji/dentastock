@@ -11,8 +11,11 @@ export function Nav() {
       <Link href="/" className={`nav-link${pathname === "/" ? " nav-link-active" : ""}`}>
         📦 Stock &amp; Catalogue
       </Link>
+      <Link href="/mouvement" className={`nav-link${pathname === "/mouvement" ? " nav-link-active" : ""}`}>
+        🔄 Mouvements
+      </Link>
       <Link href="/gestion" className={`nav-link${pathname === "/gestion" ? " nav-link-active" : ""}`}>
-        ➕ Gestion &amp; Admin
+        ⚙️ Gestion &amp; Admin
       </Link>
     </nav>
   );

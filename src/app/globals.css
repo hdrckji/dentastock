@@ -599,6 +599,143 @@ td span {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 }
 
+/* ── Mouvement form ─────────────────────────────────────────── */
+.movement-panel {
+  border-color: #a5c8f5;
+  background: linear-gradient(145deg, #f5faff 0%, #ffffff 60%, #f3fbff 100%);
+}
+
+.product-found-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid #c2dff5;
+  background: #edf6ff;
+}
+
+.product-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #cde2f5;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.product-found-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-found-meta {
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.product-found-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.stock-count-badge {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.4rem;
+  line-height: 1.1;
+  color: var(--primary-dark);
+  background: #d9f5f4;
+  border: 1px solid #9fd8d7;
+  border-radius: 10px;
+  padding: 0.3rem 0.7rem;
+}
+
+.stock-count-badge small {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.movement-type-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.type-btn {
+  flex: 1;
+  padding: 0.65rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.type-btn-inactive {
+  background: #f0f4f7;
+  color: #4d6276;
+  border-color: #cddde8;
+}
+
+.type-btn-inactive:hover {
+  background: #e2eaf0;
+}
+
+.type-btn-in-active {
+  background: linear-gradient(135deg, #0ea5a4, #22c55e);
+  color: #fff;
+  border-color: transparent;
+}
+
+.type-btn-out-active {
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  color: #fff;
+  border-color: transparent;
+}
+
+.badge-in {
+  display: inline-block;
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.badge-out {
+  display: inline-block;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.badge-adj {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.notice-error {
+  border-color: #fca5a5;
+  background: #fff5f5;
+  color: #b91c1c;
+}
+
 @media (max-width: 768px) {
   .stock-hero-grid {
     grid-template-columns: 1fr;

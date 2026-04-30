@@ -3,6 +3,26 @@ import { z } from "zod";
 import { prisma, hasConfiguredDatabaseUrl } from "@/lib/prisma";
 import { MovementType } from "@/generated/prisma/enums";
 
+export async function GET(request: NextRequest) {
+  if (!hasConfiguredDatabaseUrl) {
+    return NextResponse.json({ movements: [] });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const limit = Math.min(Number(searchParams.get("limit") ?? "10"), 50);
+
+  const movements = await prisma.stockMovement.findMany({
+    include: {
+      product: { select: { brand: true, description: true, ean: true } },
+      lot: { select: { batchNumber: true, expiresAt: true } },
+    },
+    orderBy: { occurredAt: "desc" },
+    take: limit,
+  });
+
+  return NextResponse.json({ movements });
+}
+
 const movementSchema = z.object({
   productId: z.string().min(1),
   type: z.enum(["IN", "OUT", "ADJUSTMENT"]),

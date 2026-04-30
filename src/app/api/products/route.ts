@@ -13,8 +13,12 @@ const createProductSchema = z.object({
   supplierIds: z.array(z.string().cuid()).default([]),
 });
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const ean = searchParams.get("ean")?.trim();
+
   const products = await prisma.product.findMany({
+    where: ean ? { ean } : undefined,
     include: {
       category: true,
       suppliers: {
